@@ -1,402 +1,557 @@
-import React, { useState } from 'react';
-import { Cpu, Cloud, Wifi, AlertTriangle, CheckCircle, Activity, Thermometer, Droplets, Wind, Zap } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Activity, Database, Settings, Bell, Plus, Trash2, AlertTriangle, CheckCircle, Thermometer, Droplets, Wind, Cloud } from 'lucide-react';
 
-const EdgeEnvironmentalMonitoring = () => {
-  const [activeTab, setActiveTab] = useState('architecture');
+const IoTMonitoringApp = () => {
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [devices, setDevices] = useState([]);
+  const [readings, setReadings] = useState([]);
+  const [alerts, setAlerts] = useState([]);
+  const [loading, setLoading] = useState(true);
 
-  const architectureData = {
-    layers: [
-      {
-        name: 'Device Layer',
-        icon: <Thermometer className="w-6 h-6" />,
-        components: ['Environmental Sensors', 'Edge Gateways', 'Low-Power Wireless'],
-        description: 'IoT sensors collecting temperature, humidity, air quality, noise, etc.'
-      },
-      {
-        name: 'Edge Layer',
-        icon: <Cpu className="w-6 h-6" />,
-        components: ['Edge Computing Nodes', 'Local Processing', 'Data Filtering'],
-        description: 'Real-time processing, anomaly detection, and data aggregation at the edge'
-      },
-      {
-        name: 'Fog Layer',
-        icon: <Wifi className="w-6 h-6" />,
-        components: ['Fog Nodes', 'Local Storage', 'Analytics'],
-        description: 'Intermediate processing for complex analytics and local decision making'
-      },
-      {
-        name: 'Cloud Layer',
-        icon: <Cloud className="w-6 h-6" />,
-        components: ['Cloud Storage', 'ML Models', 'Dashboard'],
-        description: 'Long-term storage, advanced analytics, and centralized management'
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const devicesData = await window.storage.get('iot-devices');
+      const readingsData = await window.storage.get('iot-readings');
+      const alertsData = await window.storage.get('iot-alerts');
+
+      if (devicesData) setDevices(JSON.parse(devicesData.value));
+      if (readingsData) setReadings(JSON.parse(readingsData.value));
+      if (alertsData) setAlerts(JSON.parse(alertsData.value));
+    } catch (error) {
+      console.log('No existing data, starting fresh');
+    }
+    setLoading(false);
+  };
+
+  const saveDevices = async (newDevices) => {
+    setDevices(newDevices);
+    try {
+      await window.storage.set('iot-devices', JSON.stringify(newDevices));
+    } catch (error) {
+      console.error('Error saving devices:', error);
+    }
+  };
+
+  const saveReadings = async (newReadings) => {
+    setReadings(newReadings);
+    try {
+      await window.storage.set('iot-readings', JSON.stringify(newReadings));
+    } catch (error) {
+      console.error('Error saving readings:', error);
+    }
+  };
+
+  const saveAlerts = async (newAlerts) => {
+    setAlerts(newAlerts);
+    try {
+      await window.storage.set('iot-alerts', JSON.stringify(newAlerts));
+    } catch (error) {
+      console.error('Error saving alerts:', error);
+    }
+  };
+
+  const Dashboard = () => {
+    const latestReadings = readings.slice(-4);
+    const activeDevicesCount = devices.filter(d => d.status === 'active').length;
+    const criticalAlerts = alerts.filter(a => a.severity === 'critical').length;
+
+    return (
+      <div className="space-y-6">
+        <h2 className="text-2xl font-bold text-gray-800">Environmental Monitoring Dashboard</h2>
+        
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+          <div className="bg-blue-500 text-white p-6 rounded-lg shadow-lg">
+            <Activity className="mb-2" size={32} />
+            <div className="text-3xl font-bold">{devices.length}</div>
+            <div className="text-sm opacity-90">Total Devices</div>
+          </div>
+          <div className="bg-green-500 text-white p-6 rounded-lg shadow-lg">
+            <CheckCircle className="mb-2" size={32} />
+            <div className="text-3xl font-bold">{activeDevicesCount}</div>
+            <div className="text-sm opacity-90">Active Devices</div>
+          </div>
+          <div className="bg-purple-500 text-white p-6 rounded-lg shadow-lg">
+            <Database className="mb-2" size={32} />
+            <div className="text-3xl font-bold">{readings.length}</div>
+            <div className="text-sm opacity-90">Total Readings</div>
+          </div>
+          <div className="bg-red-500 text-white p-6 rounded-lg shadow-lg">
+            <Bell className="mb-2" size={32} />
+            <div className="text-3xl font-bold">{criticalAlerts}</div>
+            <div className="text-sm opacity-90">Critical Alerts</div>
+          </div>
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Latest Sensor Readings</h3>
+          {latestReadings.length === 0 ? (
+            <p className="text-gray-500">No readings yet. Add a device and create readings!</p>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {latestReadings.map((reading, idx) => (
+                <div key={idx} className="border border-gray-200 p-4 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    {reading.type === 'temperature' && <Thermometer className="text-red-500" />}
+                    {reading.type === 'humidity' && <Droplets className="text-blue-500" />}
+                    {reading.type === 'air_quality' && <Wind className="text-green-500" />}
+                    {reading.type === 'pressure' && <Cloud className="text-purple-500" />}
+                    <span className="font-semibold text-gray-700">{reading.deviceName}</span>
+                  </div>
+                  <div className="text-2xl font-bold text-gray-900">{reading.value} {reading.unit}</div>
+                  <div className="text-xs text-gray-500 mt-1">{new Date(reading.timestamp).toLocaleString()}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        <div className="bg-white p-6 rounded-lg shadow-md">
+          <h3 className="text-xl font-bold text-gray-800 mb-4">Recent Alerts</h3>
+          {alerts.length === 0 ? (
+            <p className="text-gray-500">No alerts. System is running smoothly!</p>
+          ) : (
+            <div className="space-y-2">
+              {alerts.slice(-5).reverse().map((alert, idx) => (
+                <div key={idx} className={`p-4 rounded-lg border-l-4 ${
+                  alert.severity === 'critical' ? 'bg-red-50 border-red-500' :
+                  alert.severity === 'warning' ? 'bg-yellow-50 border-yellow-500' :
+                  'bg-blue-50 border-blue-500'
+                }`}>
+                  <div className="flex items-start gap-3">
+                    <AlertTriangle className={
+                      alert.severity === 'critical' ? 'text-red-500' :
+                      alert.severity === 'warning' ? 'text-yellow-500' :
+                      'text-blue-500'
+                    } />
+                    <div className="flex-1">
+                      <div className="font-semibold text-gray-800">{alert.message}</div>
+                      <div className="text-sm text-gray-600">Device: {alert.deviceName}</div>
+                      <div className="text-xs text-gray-500 mt-1">{new Date(alert.timestamp).toLocaleString()}</div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </div>
+    );
+  };
+
+  const Devices = () => {
+    const [showForm, setShowForm] = useState(false);
+    const [formData, setFormData] = useState({
+      name: '',
+      type: 'temperature',
+      location: '',
+      status: 'active'
+    });
+
+    const handleAddDevice = () => {
+      if (!formData.name || !formData.location) {
+        alert('Please fill all fields');
+        return;
       }
-    ]
+      
+      const newDevice = {
+        id: Date.now(),
+        ...formData,
+        createdAt: new Date().toISOString()
+      };
+      saveDevices([...devices, newDevice]);
+      setFormData({ name: '', type: 'temperature', location: '', status: 'active' });
+      setShowForm(false);
+    };
+
+    const deleteDevice = (id) => {
+      if (window.confirm('Are you sure you want to delete this device?')) {
+        saveDevices(devices.filter(d => d.id !== id));
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">IoT Devices</h2>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition"
+          >
+            <Plus size={20} />
+            Add Device
+          </button>
+        </div>
+
+        {showForm && (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Add New Device</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Device Name</label>
+                <input
+                  type="text"
+                  value={formData.name}
+                  onChange={(e) => setFormData({...formData, name: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Sensor-001"
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Sensor Type</label>
+                <select
+                  value={formData.type}
+                  onChange={(e) => setFormData({...formData, type: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="temperature">Temperature Sensor</option>
+                  <option value="humidity">Humidity Sensor</option>
+                  <option value="air_quality">Air Quality Sensor</option>
+                  <option value="pressure">Pressure Sensor</option>
+                </select>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Location</label>
+                <input
+                  type="text"
+                  value={formData.location}
+                  onChange={(e) => setFormData({...formData, location: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  placeholder="e.g., Building A - Floor 2"
+                />
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddDevice}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Add Device
+                </button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {devices.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              No devices registered yet. Click "Add Device" to get started!
+            </div>
+          ) : (
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device Name</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Location</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Status</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Actions</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {devices.map((device) => (
+                  <tr key={device.id}>
+                    <td className="px-6 py-4 text-sm font-medium text-gray-900">{device.name}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600 capitalize">{device.type.replace('_', ' ')}</td>
+                    <td className="px-6 py-4 text-sm text-gray-600">{device.location}</td>
+                    <td className="px-6 py-4 text-sm">
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        device.status === 'active' ? 'bg-green-100 text-green-800' : 'bg-gray-100 text-gray-800'
+                      }`}>
+                        {device.status}
+                      </span>
+                    </td>
+                    <td className="px-6 py-4 text-sm">
+                      <button
+                        onClick={() => deleteDevice(device.id)}
+                        className="text-red-600 hover:text-red-800"
+                      >
+                        <Trash2 size={18} />
+                      </button>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const deviceSpecs = [
-    {
-      category: 'Environmental Sensors',
-      devices: [
-        { name: 'Temperature & Humidity', model: 'DHT22/BME280', range: '-40°C to 80°C', power: '2.5mA' },
-        { name: 'Air Quality', model: 'MQ-135/CCS811', metrics: 'CO2, VOC, PM2.5', power: '33mA' },
-        { name: 'Noise Level', model: 'Sound Sensor', range: '30-130 dB', power: '5mA' },
-        { name: 'Light Intensity', model: 'BH1750', range: '1-65535 lux', power: '0.12mA' }
-      ]
-    },
-    {
-      category: 'Edge Gateways',
-      devices: [
-        { name: 'Raspberry Pi 4', specs: 'Quad-core, 4GB RAM', protocols: 'WiFi, BT, Ethernet', power: '3W' },
-        { name: 'NVIDIA Jetson Nano', specs: '4-core ARM, 2GB RAM', ml: 'GPU-accelerated ML', power: '5-10W' },
-        { name: 'Arduino MKR WAN 1310', specs: 'LoRaWAN, Low-power', range: 'Up to 10km', power: '104mA' }
-      ]
-    }
-  ];
+  const Readings = () => {
+    const [showForm, setShowForm] = useState(false);
+    const [formData, setFormData] = useState({
+      deviceId: '',
+      value: '',
+      unit: '°C'
+    });
 
-  const edgeProcessing = [
-    {
-      technique: 'Data Filtering & Aggregation',
-      description: 'Reduce data volume by 70-90% through intelligent filtering',
-      implementation: 'Time-series aggregation, delta compression, outlier removal'
-    },
-    {
-      technique: 'Anomaly Detection',
-      description: 'Real-time detection using lightweight ML models',
-      implementation: 'Statistical methods, LSTM autoencoders, isolation forests'
-    },
-    {
-      technique: 'Event-Driven Processing',
-      description: 'Trigger alerts only when thresholds are exceeded',
-      implementation: 'Complex event processing (CEP), rule engines'
-    },
-    {
-      technique: 'Predictive Maintenance',
-      description: 'Predict sensor failures before they occur',
-      implementation: 'TinyML models, edge inference with TensorFlow Lite'
-    }
-  ];
+    const handleAddReading = () => {
+      if (!formData.deviceId || !formData.value) {
+        alert('Please fill all fields');
+        return;
+      }
 
-  const implementation = {
-    connectivity: [
-      { protocol: 'LoRaWAN', useCase: 'Long-range (10km+), Low-power', dataRate: '0.3-50 kbps' },
-      { protocol: 'NB-IoT', useCase: 'Cellular, Wide coverage', dataRate: '200 kbps' },
-      { protocol: 'WiFi 6', useCase: 'High-speed, Short-range', dataRate: '100+ Mbps' },
-      { protocol: 'Zigbee/Thread', useCase: 'Mesh networks, Low-power', dataRate: '250 kbps' },
-      { protocol: 'BLE 5.0', useCase: 'Ultra-low power, Proximity', dataRate: '2 Mbps' }
-    ],
-    dataFlow: [
-      { step: '1. Sensor Reading', time: '< 1ms', location: 'IoT Device' },
-      { step: '2. Edge Preprocessing', time: '< 10ms', location: 'Edge Gateway' },
-      { step: '3. Local Decision', time: '< 50ms', location: 'Edge/Fog Node' },
-      { step: '4. Alert Trigger', time: '< 100ms', location: 'Edge Node' },
-      { step: '5. Cloud Sync', time: '< 1s', location: 'Cloud Backend' }
-    ],
-    security: [
-      'End-to-end encryption (TLS 1.3, AES-256)',
-      'Device authentication (X.509 certificates)',
-      'Secure boot and firmware updates (OTA)',
-      'Data anonymization at edge',
-      'Zero-trust network architecture'
-    ]
+      const device = devices.find(d => d.id === parseInt(formData.deviceId));
+      if (!device) return;
+
+      const newReading = {
+        id: Date.now(),
+        deviceId: device.id,
+        deviceName: device.name,
+        type: device.type,
+        value: parseFloat(formData.value),
+        unit: formData.unit,
+        timestamp: new Date().toISOString()
+      };
+
+      const newReadings = [...readings, newReading];
+      saveReadings(newReadings);
+      checkThresholds(newReading);
+
+      setFormData({ deviceId: '', value: '', unit: '°C' });
+      setShowForm(false);
+    };
+
+    const checkThresholds = (reading) => {
+      let shouldAlert = false;
+      let severity = 'info';
+      let message = '';
+
+      if (reading.type === 'temperature' && reading.value > 35) {
+        shouldAlert = true;
+        severity = 'critical';
+        message = `High temperature detected: ${reading.value}${reading.unit}`;
+      } else if (reading.type === 'humidity' && reading.value > 80) {
+        shouldAlert = true;
+        severity = 'warning';
+        message = `High humidity detected: ${reading.value}${reading.unit}`;
+      } else if (reading.type === 'air_quality' && reading.value > 150) {
+        shouldAlert = true;
+        severity = 'critical';
+        message = `Poor air quality detected: ${reading.value} AQI`;
+      }
+
+      if (shouldAlert) {
+        const newAlert = {
+          id: Date.now(),
+          deviceId: reading.deviceId,
+          deviceName: reading.deviceName,
+          severity,
+          message,
+          timestamp: new Date().toISOString()
+        };
+        saveAlerts([...alerts, newAlert]);
+      }
+    };
+
+    return (
+      <div className="space-y-6">
+        <div className="flex justify-between items-center">
+          <h2 className="text-2xl font-bold text-gray-800">Sensor Readings</h2>
+          <button
+            onClick={() => setShowForm(!showForm)}
+            className="bg-blue-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-blue-700 transition disabled:bg-gray-400 disabled:cursor-not-allowed"
+            disabled={devices.length === 0}
+          >
+            <Plus size={20} />
+            Add Reading
+          </button>
+        </div>
+
+        {devices.length === 0 && (
+          <div className="bg-yellow-50 border border-yellow-200 p-4 rounded-lg">
+            <p className="text-yellow-800">Please add devices first before recording readings.</p>
+          </div>
+        )}
+
+        {showForm && devices.length > 0 && (
+          <div className="bg-white p-6 rounded-lg shadow-md">
+            <h3 className="text-lg font-bold text-gray-800 mb-4">Add New Reading</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1">Select Device</label>
+                <select
+                  value={formData.deviceId}
+                  onChange={(e) => setFormData({...formData, deviceId: e.target.value})}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                >
+                  <option value="">Choose a device...</option>
+                  {devices.map(device => (
+                    <option key={device.id} value={device.id}>
+                      {device.name} ({device.type})
+                    </option>
+                  ))}
+                </select>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Value</label>
+                  <input
+                    type="number"
+                    step="0.01"
+                    value={formData.value}
+                    onChange={(e) => setFormData({...formData, value: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                    placeholder="e.g., 25.5"
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-700 mb-1">Unit</label>
+                  <select
+                    value={formData.unit}
+                    onChange={(e) => setFormData({...formData, unit: e.target.value})}
+                    className="w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                  >
+                    <option value="°C">°C</option>
+                    <option value="°F">°F</option>
+                    <option value="%">%</option>
+                    <option value="AQI">AQI</option>
+                    <option value="hPa">hPa</option>
+                  </select>
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={handleAddReading}
+                  className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition"
+                >
+                  Add Reading
+                </button>
+                <button
+                  onClick={() => setShowForm(false)}
+                  className="bg-gray-300 text-gray-700 px-4 py-2 rounded-lg hover:bg-gray-400 transition"
+                >
+                  Cancel
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <div className="bg-white rounded-lg shadow-md overflow-hidden">
+          {readings.length === 0 ? (
+            <div className="p-8 text-center text-gray-500">
+              No readings recorded yet. Click "Add Reading" to start monitoring!
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead className="bg-gray-50 border-b border-gray-200">
+                  <tr>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Device</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Type</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Value</th>
+                    <th className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-200">
+                  {readings.slice().reverse().map((reading) => (
+                    <tr key={reading.id}>
+                      <td className="px-6 py-4 text-sm font-medium text-gray-900">{reading.deviceName}</td>
+                      <td className="px-6 py-4 text-sm text-gray-600 capitalize">{reading.type.replace('_', ' ')}</td>
+                      <td className="px-6 py-4 text-sm text-gray-900 font-semibold">
+                        {reading.value} {reading.unit}
+                      </td>
+                      <td className="px-6 py-4 text-sm text-gray-600">
+                        {new Date(reading.timestamp).toLocaleString()}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </div>
+    );
   };
 
-  const sampleMetrics = [
-    { param: 'Temperature', value: '24.3°C', status: 'normal', trend: '+0.2' },
-    { param: 'Humidity', value: '62%', status: 'normal', trend: '-1.5' },
-    { param: 'Air Quality', value: '45 AQI', status: 'good', trend: '+3' },
-    { param: 'Noise Level', value: '58 dB', status: 'normal', trend: '+2' },
-    { param: 'CO2 Level', value: '780 ppm', status: 'warning', trend: '+45' },
-    { param: 'PM2.5', value: '18 µg/m³', status: 'normal', trend: '-2' }
-  ];
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50 flex items-center justify-center">
+        <div className="text-center">
+          <Activity className="animate-spin mx-auto mb-4 text-blue-600" size={48} />
+          <p className="text-gray-600">Loading system...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-900 via-blue-900 to-slate-800 text-white p-8">
-      <div className="max-w-7xl mx-auto">
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold mb-2 flex items-center gap-3">
-            <Activity className="w-10 h-10 text-blue-400" />
-            Edge IoT Environmental Monitoring System
-          </h1>
-          <p className="text-blue-200 text-lg">Real-time environmental data processing at the edge</p>
+    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-50">
+      <header className="bg-white shadow-md">
+        <div className="max-w-7xl mx-auto px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Activity className="text-blue-600" size={32} />
+              <h1 className="text-2xl font-bold text-gray-900">IoT Environmental Monitor</h1>
+            </div>
+            <div className="text-sm text-gray-600">
+              Edge Computing • Real-time Monitoring
+            </div>
+          </div>
         </div>
+      </header>
 
-        {/* Navigation Tabs */}
-        <div className="flex gap-2 mb-6 flex-wrap">
-          {['architecture', 'devices', 'processing', 'implementation', 'monitoring'].map(tab => (
+      <nav className="bg-white border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4">
+          <div className="flex gap-1">
             <button
-              key={tab}
-              onClick={() => setActiveTab(tab)}
-              className={`px-6 py-3 rounded-lg font-semibold transition-all ${
-                activeTab === tab
-                  ? 'bg-blue-500 text-white shadow-lg'
-                  : 'bg-slate-800 text-slate-300 hover:bg-slate-700'
+              onClick={() => setActiveTab('dashboard')}
+              className={`px-6 py-3 font-medium transition-all ${
+                activeTab === 'dashboard'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
               }`}
             >
-              {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              <Activity className="inline mr-2" size={18} />
+              Dashboard
             </button>
-          ))}
+            <button
+              onClick={() => setActiveTab('devices')}
+              className={`px-6 py-3 font-medium transition-all ${
+                activeTab === 'devices'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Settings className="inline mr-2" size={18} />
+              Devices
+            </button>
+            <button
+              onClick={() => setActiveTab('readings')}
+              className={`px-6 py-3 font-medium transition-all ${
+                activeTab === 'readings'
+                  ? 'text-blue-600 border-b-2 border-blue-600'
+                  : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              <Database className="inline mr-2" size={18} />
+              Readings
+            </button>
+          </div>
         </div>
+      </nav>
 
-        {/* Architecture Tab */}
-        {activeTab === 'architecture' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-2xl font-bold mb-4 text-blue-400">System Architecture</h2>
-              <div className="grid gap-4">
-                {architectureData.layers.map((layer, idx) => (
-                  <div key={idx} className="bg-slate-700 rounded-lg p-6 hover:bg-slate-650 transition-colors">
-                    <div className="flex items-start gap-4">
-                      <div className="text-blue-400 mt-1">{layer.icon}</div>
-                      <div className="flex-1">
-                        <h3 className="text-xl font-bold mb-2">{layer.name}</h3>
-                        <p className="text-slate-300 mb-3">{layer.description}</p>
-                        <div className="flex flex-wrap gap-2">
-                          {layer.components.map((comp, i) => (
-                            <span key={i} className="bg-blue-900 text-blue-200 px-3 py-1 rounded-full text-sm">
-                              {comp}
-                            </span>
-                          ))}
-                        </div>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h3 className="text-xl font-bold mb-4 text-blue-400">Key Benefits of Edge Processing</h3>
-              <div className="grid md:grid-cols-2 gap-4">
-                {[
-                  { title: 'Low Latency', desc: 'Process data locally for <50ms response time' },
-                  { title: 'Bandwidth Efficiency', desc: 'Reduce cloud traffic by 70-90%' },
-                  { title: 'Reliability', desc: 'Continue operation during network outages' },
-                  { title: 'Privacy', desc: 'Keep sensitive data at the edge' }
-                ].map((benefit, i) => (
-                  <div key={i} className="bg-slate-700 rounded-lg p-4">
-                    <CheckCircle className="w-5 h-5 text-green-400 mb-2" />
-                    <h4 className="font-bold mb-1">{benefit.title}</h4>
-                    <p className="text-slate-300 text-sm">{benefit.desc}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Devices Tab */}
-        {activeTab === 'devices' && (
-          <div className="space-y-6">
-            {deviceSpecs.map((category, idx) => (
-              <div key={idx} className="bg-slate-800 rounded-xl p-6 shadow-xl">
-                <h2 className="text-2xl font-bold mb-4 text-blue-400">{category.category}</h2>
-                <div className="overflow-x-auto">
-                  <table className="w-full">
-                    <thead>
-                      <tr className="border-b border-slate-700">
-                        <th className="text-left py-3 px-4 text-slate-300">Device/Sensor</th>
-                        <th className="text-left py-3 px-4 text-slate-300">Model/Specs</th>
-                        <th className="text-left py-3 px-4 text-slate-300">Capabilities</th>
-                        <th className="text-left py-3 px-4 text-slate-300">Power</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {category.devices.map((device, i) => (
-                        <tr key={i} className="border-b border-slate-700 hover:bg-slate-700">
-                          <td className="py-3 px-4 font-semibold">{device.name}</td>
-                          <td className="py-3 px-4 text-slate-300">{device.model || device.specs}</td>
-                          <td className="py-3 px-4 text-slate-300">{device.range || device.metrics || device.protocols || device.ml}</td>
-                          <td className="py-3 px-4">
-                            <span className="bg-green-900 text-green-200 px-2 py-1 rounded text-sm">
-                              {device.power}
-                            </span>
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            ))}
-          </div>
-        )}
-
-        {/* Processing Tab */}
-        {activeTab === 'processing' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-2xl font-bold mb-4 text-blue-400">Edge Processing Techniques</h2>
-              <div className="space-y-4">
-                {edgeProcessing.map((tech, idx) => (
-                  <div key={idx} className="bg-slate-700 rounded-lg p-6">
-                    <h3 className="text-xl font-bold mb-2">{tech.technique}</h3>
-                    <p className="text-slate-300 mb-3">{tech.description}</p>
-                    <div className="bg-slate-800 rounded p-3">
-                      <p className="text-sm text-blue-200">
-                        <span className="font-semibold">Implementation:</span> {tech.implementation}
-                      </p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h3 className="text-xl font-bold mb-4 text-blue-400">Software Stack</h3>
-              <div className="grid md:grid-cols-3 gap-4">
-                <div className="bg-slate-700 rounded-lg p-4">
-                  <h4 className="font-bold mb-2">Edge Runtime</h4>
-                  <ul className="text-sm text-slate-300 space-y-1">
-                    <li>• Node-RED for flow-based</li>
-                    <li>• EdgeX Foundry</li>
-                    <li>• AWS IoT Greengrass</li>
-                    <li>• Azure IoT Edge</li>
-                  </ul>
-                </div>
-                <div className="bg-slate-700 rounded-lg p-4">
-                  <h4 className="font-bold mb-2">ML Frameworks</h4>
-                  <ul className="text-sm text-slate-300 space-y-1">
-                    <li>• TensorFlow Lite</li>
-                    <li>• PyTorch Mobile</li>
-                    <li>• ONNX Runtime</li>
-                    <li>• TinyML libraries</li>
-                  </ul>
-                </div>
-                <div className="bg-slate-700 rounded-lg p-4">
-                  <h4 className="font-bold mb-2">Protocols</h4>
-                  <ul className="text-sm text-slate-300 space-y-1">
-                    <li>• MQTT for messaging</li>
-                    <li>• CoAP for constrained</li>
-                    <li>• HTTP/2 for APIs</li>
-                    <li>• WebSocket for streaming</li>
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Implementation Tab */}
-        {activeTab === 'implementation' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-2xl font-bold mb-4 text-blue-400">Connectivity Options</h2>
-              <div className="overflow-x-auto">
-                <table className="w-full">
-                  <thead>
-                    <tr className="border-b border-slate-700">
-                      <th className="text-left py-3 px-4 text-slate-300">Protocol</th>
-                      <th className="text-left py-3 px-4 text-slate-300">Use Case</th>
-                      <th className="text-left py-3 px-4 text-slate-300">Data Rate</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {implementation.connectivity.map((conn, i) => (
-                      <tr key={i} className="border-b border-slate-700 hover:bg-slate-700">
-                        <td className="py-3 px-4 font-semibold">{conn.protocol}</td>
-                        <td className="py-3 px-4 text-slate-300">{conn.useCase}</td>
-                        <td className="py-3 px-4">
-                          <span className="bg-blue-900 text-blue-200 px-2 py-1 rounded text-sm">
-                            {conn.dataRate}
-                          </span>
-                        </td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-
-            <div className="grid md:grid-cols-2 gap-6">
-              <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-                <h3 className="text-xl font-bold mb-4 text-blue-400">Data Flow Timeline</h3>
-                <div className="space-y-3">
-                  {implementation.dataFlow.map((flow, i) => (
-                    <div key={i} className="flex items-center gap-4">
-                      <div className="bg-blue-900 text-blue-200 rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">
-                        {i + 1}
-                      </div>
-                      <div className="flex-1 bg-slate-700 rounded-lg p-3">
-                        <div className="font-semibold">{flow.step}</div>
-                        <div className="text-sm text-slate-300">
-                          {flow.time} • {flow.location}
-                        </div>
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-                <h3 className="text-xl font-bold mb-4 text-blue-400">Security Measures</h3>
-                <div className="space-y-3">
-                  {implementation.security.map((measure, i) => (
-                    <div key={i} className="flex items-start gap-3 bg-slate-700 rounded-lg p-3">
-                      <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                      <span className="text-slate-300">{measure}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-
-        {/* Monitoring Tab */}
-        {activeTab === 'monitoring' && (
-          <div className="space-y-6">
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h2 className="text-2xl font-bold mb-4 text-blue-400">Real-Time Environmental Metrics</h2>
-              <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {sampleMetrics.map((metric, i) => (
-                  <div key={i} className="bg-slate-700 rounded-lg p-5">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-slate-300">{metric.param}</h3>
-                      {metric.status === 'normal' && <CheckCircle className="w-5 h-5 text-green-400" />}
-                      {metric.status === 'good' && <CheckCircle className="w-5 h-5 text-blue-400" />}
-                      {metric.status === 'warning' && <AlertTriangle className="w-5 h-5 text-yellow-400" />}
-                    </div>
-                    <div className="text-3xl font-bold mb-1">{metric.value}</div>
-                    <div className="text-sm text-slate-400">
-                      Trend: <span className={metric.trend.startsWith('+') ? 'text-red-400' : 'text-green-400'}>
-                        {metric.trend}
-                      </span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            <div className="bg-slate-800 rounded-xl p-6 shadow-xl">
-              <h3 className="text-xl font-bold mb-4 text-blue-400">System Health Dashboard</h3>
-              <div className="grid md:grid-cols-4 gap-4">
-                <div className="bg-slate-700 rounded-lg p-4 text-center">
-                  <Zap className="w-8 h-8 text-green-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold">98.7%</div>
-                  <div className="text-sm text-slate-300">Uptime</div>
-                </div>
-                <div className="bg-slate-700 rounded-lg p-4 text-center">
-                  <Activity className="w-8 h-8 text-blue-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold">47ms</div>
-                  <div className="text-sm text-slate-300">Avg Latency</div>
-                </div>
-                <div className="bg-slate-700 rounded-lg p-4 text-center">
-                  <Wifi className="w-8 h-8 text-purple-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold">124</div>
-                  <div className="text-sm text-slate-300">Active Devices</div>
-                </div>
-                <div className="bg-slate-700 rounded-lg p-4 text-center">
-                  <Cloud className="w-8 h-8 text-cyan-400 mx-auto mb-2" />
-                  <div className="text-2xl font-bold">2.3GB</div>
-                  <div className="text-sm text-slate-300">Data/Day</div>
-                </div>
-              </div>
-            </div>
-          </div>
-        )}
-      </div>
+      <main className="max-w-7xl mx-auto px-4 py-8">
+        {activeTab === 'dashboard' && <Dashboard />}
+        {activeTab === 'devices' && <Devices />}
+        {activeTab === 'readings' && <Readings />}
+      </main>
     </div>
   );
 };
 
-export default EdgeEnvironmentalMonitoring;
+export default IoTMonitoringApp;
